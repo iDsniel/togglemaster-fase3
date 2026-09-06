@@ -1,3 +1,4 @@
+from psycopg2 import sql
 import os
 import sys
 import psycopg2
@@ -139,10 +140,10 @@ def update_rule(flag_name):
     values = []
     
     if 'rules' in data:
-        fields.append("rules = %s")
+        fields.append("rules")
         values.append(Json(data['rules'])) # Serializa o JSON
     if 'is_enabled' in data:
-        fields.append("is_enabled = %s")
+        fields.append("is_enabled")
         values.append(data['is_enabled'])
     
     if not fields:
@@ -150,7 +151,23 @@ def update_rule(flag_name):
     
     values.append(flag_name) # Adiciona o 'flag_name' para a cláusula WHERE
     
-    query = f"UPDATE targeting_rules SET {', '.join(fields)} WHERE flag_name = %s RETURNING *"
+    set_clause = sql.SQL(", ").join(
+    
+        sql.SQL("{} = %s").format(sql.Identifier(field))
+    
+        for field in fields
+    
+    )
+    
+    query = sql.SQL("UPDATE {} SET {} WHERE {} = %s RETURNING *").format(
+    
+        sql.Identifier("targeting_rules"),
+    
+        set_clause,
+    
+        sql.Identifier("flag_name"),
+    
+    )
     
     conn = None
     cur = None

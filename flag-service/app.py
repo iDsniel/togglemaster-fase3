@@ -1,3 +1,4 @@
+from psycopg2 import sql
 import os
 import sys
 import psycopg2
@@ -161,10 +162,10 @@ def update_flag(name):
     
     # Constrói a query dinamicamente
     if 'description' in data:
-        fields.append("description = %s")
+        fields.append("description")
         values.append(data['description'])
     if 'is_enabled' in data:
-        fields.append("is_enabled = %s")
+        fields.append("is_enabled")
         values.append(data['is_enabled'])
     
     if not fields:
@@ -172,7 +173,23 @@ def update_flag(name):
     
     values.append(name) # Adiciona o 'name' para a cláusula WHERE
     
-    query = f"UPDATE flags SET {', '.join(fields)} WHERE name = %s RETURNING *"
+    set_clause = sql.SQL(", ").join(
+    
+        sql.SQL("{} = %s").format(sql.Identifier(field))
+    
+        for field in fields
+    
+    )
+    
+    query = sql.SQL("UPDATE {} SET {} WHERE {} = %s RETURNING *").format(
+    
+        sql.Identifier("flags"),
+    
+        set_clause,
+    
+        sql.Identifier("name"),
+    
+    )
     
     conn = None
     cur = None

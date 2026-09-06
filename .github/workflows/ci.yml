@@ -89,8 +89,18 @@ jobs:
         run: |
           IMAGE_URI="${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com/togglemaster/${{ matrix.service }}"
           echo "IMAGE_URI=$IMAGE_URI" >> "$GITHUB_ENV"
+
+          DOCKERFILE=$(find "${{ matrix.service }}" -maxdepth 1 -type f \( -name 'Dockerfile' -o -name 'DockerFile' \) | head -1)
+
+          if [ -z "$DOCKERFILE" ]; then
+            echo "Dockerfile not found for ${{ matrix.service }}"
+            exit 1
+          fi
+
+          echo "Using $DOCKERFILE"
+
           docker build \
-            -f "${{ matrix.service }}/DockerFile" \
+            -f "$DOCKERFILE" \
             -t "${IMAGE_URI}:${GITHUB_SHA}" \
             "${{ matrix.service }}"
 
