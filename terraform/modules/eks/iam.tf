@@ -60,3 +60,32 @@ resource "aws_iam_role_policy_attachment" "node_cni_bootstrap" {
   role       = aws_iam_role.node.name
   policy_arn = "arn:aws:iam::aws:policy/AmazonEKS_CNI_Policy"
 }
+data "aws_iam_policy_document" "vpc_cni_pod_identity_assume_role" {
+  statement {
+    effect = "Allow"
+
+    actions = [
+      "sts:AssumeRole",
+      "sts:TagSession"
+    ]
+
+    principals {
+      type        = "Service"
+      identifiers = ["pods.eks.amazonaws.com"]
+    }
+  }
+}
+
+resource "aws_iam_role" "vpc_cni" {
+  name               = "${var.cluster_name}-vpc-cni-role"
+  assume_role_policy = data.aws_iam_policy_document.vpc_cni_pod_identity_assume_role.json
+
+  tags = {
+    Name = "${var.cluster_name}-vpc-cni-role"
+  }
+}
+
+resource "aws_iam_role_policy_attachment" "vpc_cni" {
+  role       = aws_iam_role.vpc_cni.name
+  policy_arn = "arn:aws:iam::aws:policy/AmazonEKS_CNI_Policy"
+}
