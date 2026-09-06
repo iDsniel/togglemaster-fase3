@@ -55,11 +55,6 @@ resource "aws_iam_role_policy_attachment" "node_ecr" {
   role       = aws_iam_role.node.name
   policy_arn = "arn:aws:iam::aws:policy/AmazonEC2ContainerRegistryPullOnly"
 }
-
-resource "aws_iam_role_policy_attachment" "node_cni_bootstrap" {
-  role       = aws_iam_role.node.name
-  policy_arn = "arn:aws:iam::aws:policy/AmazonEKS_CNI_Policy"
-}
 data "aws_iam_policy_document" "vpc_cni_pod_identity_assume_role" {
   statement {
     effect = "Allow"

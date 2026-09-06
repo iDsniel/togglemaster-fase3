@@ -60,8 +60,7 @@ resource "aws_eks_node_group" "main" {
 
   depends_on = [
     aws_iam_role_policy_attachment.node_worker,
-    aws_iam_role_policy_attachment.node_ecr,
-    aws_iam_role_policy_attachment.node_cni_bootstrap
+    aws_iam_role_policy_attachment.node_ecr
   ]
 
   tags = {
