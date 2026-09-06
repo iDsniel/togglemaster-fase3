@@ -1,0 +1,40 @@
+# Secrets
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+
+# Terraform
+**/.terraform/*
+*.tfstate
+*.tfstate.*
+crash.log
+crash.*.log
+*.tfvars
+*.tfvars.json
+
+# Python
+__pycache__/
+*.pyc
+
+# IDE / OS
+.vscode/
+.idea/
+.DS_Store
+
+# Temporary
+tmp/
+*.log
+
+# Terraform generated plans
+*.tfplan
+tfplan
+
+# Generated / sensitive artifacts
+*.env
+!*.env.example
+infra/aws-generated.env
+infra/rollback/
+**/*secrets*.json
+**/*secret*.json
