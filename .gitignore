@@ -38,3 +38,6 @@ infra/aws-generated.env
 infra/rollback/
 **/*secrets*.json
 **/*secret*.json
+
+# Terraform backend local configuration
+**/backend.hcl
