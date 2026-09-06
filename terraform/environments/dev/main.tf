@@ -21,3 +21,25 @@ module "networking" {
     "10.30.11.0/24"
   ]
 }
+data "aws_caller_identity" "current" {}
+
+module "eks" {
+  source = "../../modules/eks"
+
+  cluster_name       = "togglemaster-fase3"
+  kubernetes_version = "1.35"
+
+  private_subnet_ids = module.networking.private_subnet_ids
+
+  public_access_cidrs = [
+    "177.97.183.119/32"
+  ]
+
+  admin_principal_arn = "arn:aws:iam::${data.aws_caller_identity.current.account_id}:user/fiap-tc-deployer"
+
+  node_instance_types = ["t3.small"]
+
+  node_min_size     = 2
+  node_desired_size = 3
+  node_max_size     = 4
+}
