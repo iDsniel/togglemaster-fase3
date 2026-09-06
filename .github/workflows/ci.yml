@@ -1,0 +1,122 @@
+name: ToggleMaster DevSecOps CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  id-token: write
+
+env:
+  AWS_REGION: us-east-1
+  AWS_ACCOUNT_ID: "617309006489"
+
+jobs:
+  ci:
+    name: ${{ matrix.service }}
+    runs-on: ubuntu-latest
+
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - service: auth-service
+            language: go
+          - service: evaluation-service
+            language: go
+          - service: flag-service
+            language: python
+          - service: targeting-service
+            language: python
+          - service: analytics-service
+            language: python
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Go
+        if: matrix.language == 'go'
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: ${{ matrix.service }}/go.mod
+
+      - name: Go test and vet
+        if: matrix.language == 'go'
+        working-directory: ${{ matrix.service }}
+        run: |
+          go mod download
+          go vet ./...
+          go test ./...
+
+      - name: Setup Python
+        if: matrix.language == 'python'
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Python validation
+        if: matrix.language == 'python'
+        working-directory: ${{ matrix.service }}
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+          pip install ruff
+          ruff check . --select E9,F63,F7,F82
+          python -m compileall -q .
+
+      - name: SAST - Semgrep
+        working-directory: ${{ matrix.service }}
+        run: |
+          pip install semgrep
+          semgrep scan --config p/default --severity ERROR --error .
+
+      - name: SCA - Trivy filesystem
+        run: |
+          docker run --rm \
+            -v "$PWD/${{ matrix.service }}:/src" \
+            aquasec/trivy:latest \
+            fs --scanners vuln \
+            --severity CRITICAL \
+            --exit-code 1 \
+            --no-progress /src
+
+      - name: Build container
+        run: |
+          IMAGE_URI="${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com/togglemaster/${{ matrix.service }}"
+          echo "IMAGE_URI=$IMAGE_URI" >> "$GITHUB_ENV"
+          docker build \
+            -f "${{ matrix.service }}/DockerFile" \
+            -t "${IMAGE_URI}:${GITHUB_SHA}" \
+            "${{ matrix.service }}"
+
+      - name: Container scan - Trivy
+        run: |
+          docker run --rm \
+            -v /var/run/docker.sock:/var/run/docker.sock \
+            aquasec/trivy:latest \
+            image \
+            --severity CRITICAL \
+            --exit-code 1 \
+            --no-progress \
+            "${IMAGE_URI}:${GITHUB_SHA}"
+
+      - name: Configure AWS credentials with OIDC
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: arn:aws:iam::617309006489:role/togglemaster-github-actions-ecr
+          aws-region: us-east-1
+
+      - name: Login to Amazon ECR
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        uses: aws-actions/amazon-ecr-login@v2
+
+      - name: Push image with commit SHA
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        run: |
+          docker push "${IMAGE_URI}:${GITHUB_SHA}"
