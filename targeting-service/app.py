@@ -174,7 +174,7 @@ def update_rule(flag_name):
     try:
         conn = pool.getconn()
         cur = conn.cursor(cursor_factory=RealDictCursor)
-        cur.execute(query, tuple(values))
+        cur.execute(query.as_string(conn), tuple(values))
         
         if cur.rowcount == 0:
             return jsonify({"error": "Regra não encontrada"}), 404

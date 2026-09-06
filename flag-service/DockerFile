@@ -1,0 +1,24 @@
+FROM python:3.12-alpine
+
+WORKDIR /app
+
+ENV PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1 \
+    PIP_NO_CACHE_DIR=1
+
+RUN apk add --no-cache libpq \
+    && apk add --no-cache --virtual .build-deps \
+       gcc \
+       musl-dev \
+       postgresql-dev
+
+COPY requirements.txt .
+
+RUN pip install --no-cache-dir -r requirements.txt \
+    && apk del .build-deps
+
+COPY . .
+
+USER 65532:65532
+
+CMD ["python", "app.py"]

@@ -196,7 +196,7 @@ def update_flag(name):
     try:
         conn = pool.getconn()
         cur = conn.cursor(cursor_factory=RealDictCursor)
-        cur.execute(query, tuple(values))
+        cur.execute(query.as_string(conn), tuple(values))
         
         if cur.rowcount == 0:
             return jsonify({"error": "Flag não encontrada"}), 404
