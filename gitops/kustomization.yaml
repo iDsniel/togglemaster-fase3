@@ -10,16 +10,16 @@ resources:
 images:
   - name: auth-image
     newName: 617309006489.dkr.ecr.us-east-1.amazonaws.com/togglemaster/auth-service
-    newTag: c48fcd305502fafe22546bf1ad212fc05cc3b91b
+    newTag: c557dece6a733a1789ce45740c1cc344d0c3a150
   - name: flag-image
     newName: 617309006489.dkr.ecr.us-east-1.amazonaws.com/togglemaster/flag-service
-    newTag: c48fcd305502fafe22546bf1ad212fc05cc3b91b
+    newTag: c557dece6a733a1789ce45740c1cc344d0c3a150
   - name: targeting-image
     newName: 617309006489.dkr.ecr.us-east-1.amazonaws.com/togglemaster/targeting-service
-    newTag: c48fcd305502fafe22546bf1ad212fc05cc3b91b
+    newTag: c557dece6a733a1789ce45740c1cc344d0c3a150
   - name: evaluation-image
     newName: 617309006489.dkr.ecr.us-east-1.amazonaws.com/togglemaster/evaluation-service
-    newTag: c48fcd305502fafe22546bf1ad212fc05cc3b91b
+    newTag: c557dece6a733a1789ce45740c1cc344d0c3a150
   - name: analytics-image
     newName: 617309006489.dkr.ecr.us-east-1.amazonaws.com/togglemaster/analytics-service
-    newTag: c48fcd305502fafe22546bf1ad212fc05cc3b91b
+    newTag: c557dece6a733a1789ce45740c1cc344d0c3a150
