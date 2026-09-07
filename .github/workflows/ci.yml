@@ -90,16 +90,14 @@ jobs:
           IMAGE_URI="${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com/togglemaster/${{ matrix.service }}"
           echo "IMAGE_URI=$IMAGE_URI" >> "$GITHUB_ENV"
 
-          DOCKERFILE=$(find "${{ matrix.service }}" -maxdepth 1 -type f \( -name 'Dockerfile' -o -name 'DockerFile' \) | head -1)
-
-          if [ -z "$DOCKERFILE" ]; then
-            echo "Dockerfile not found for ${{ matrix.service }}"
-            exit 1
-          fi
+          DOCKERFILE="${{ matrix.service }}/Dockerfile"
+          test -f "$DOCKERFILE"
 
           echo "Using $DOCKERFILE"
+          head -1 "$DOCKERFILE"
 
           docker build \
+            --pull \
             -f "$DOCKERFILE" \
             -t "${IMAGE_URI}:${GITHUB_SHA}" \
             "${{ matrix.service }}"
@@ -110,6 +108,7 @@ jobs:
             -v /var/run/docker.sock:/var/run/docker.sock \
             aquasec/trivy:latest \
             image \
+            --scanners vuln \
             --severity CRITICAL \
             --exit-code 1 \
             --no-progress \
