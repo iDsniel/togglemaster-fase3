@@ -26,7 +26,7 @@ data "aws_iam_policy_document" "github_actions_assume_role" {
       test     = "StringEquals"
       variable = "token.actions.githubusercontent.com:sub"
       values = [
-        "repo:iDsniel/togglemaster-fase3:ref:refs/heads/main"
+        "repo:iDsniel@69876981/togglemaster-fase3@1359553764:ref:refs/heads/main"
       ]
     }
   }
