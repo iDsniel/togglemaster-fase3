@@ -1,0 +1,25 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+resources:
+  - namespace.yaml
+  - configmap.yaml
+  - serviceaccounts.yaml
+  - workloads.yaml
+
+images:
+  - name: auth-image
+    newName: 617309006489.dkr.ecr.us-east-1.amazonaws.com/togglemaster/auth-service
+    newTag: e69b552a5b24c0e2294c1e719592a3b25a730e2b
+  - name: flag-image
+    newName: 617309006489.dkr.ecr.us-east-1.amazonaws.com/togglemaster/flag-service
+    newTag: e69b552a5b24c0e2294c1e719592a3b25a730e2b
+  - name: targeting-image
+    newName: 617309006489.dkr.ecr.us-east-1.amazonaws.com/togglemaster/targeting-service
+    newTag: e69b552a5b24c0e2294c1e719592a3b25a730e2b
+  - name: evaluation-image
+    newName: 617309006489.dkr.ecr.us-east-1.amazonaws.com/togglemaster/evaluation-service
+    newTag: e69b552a5b24c0e2294c1e719592a3b25a730e2b
+  - name: analytics-image
+    newName: 617309006489.dkr.ecr.us-east-1.amazonaws.com/togglemaster/analytics-service
+    newTag: e69b552a5b24c0e2294c1e719592a3b25a730e2b
