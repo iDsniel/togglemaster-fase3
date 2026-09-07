@@ -1,0 +1,54 @@
+apiVersion: argoproj.io/v1alpha1
+kind: AppProject
+metadata:
+  name: togglemaster
+  namespace: argocd
+spec:
+  description: ToggleMaster FIAP Phase 3 GitOps project
+  sourceRepos:
+    - https://github.com/iDsniel/togglemaster-fase3.git
+  destinations:
+    - namespace: togglemaster
+      server: https://kubernetes.default.svc
+  clusterResourceWhitelist:
+    - group: ""
+      kind: Namespace
+  namespaceResourceWhitelist:
+    - group: "*"
+      kind: "*"
+---
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: togglemaster
+  namespace: argocd
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+  labels:
+    app.kubernetes.io/part-of: togglemaster
+    fiap.techchallenge/phase: "3"
+spec:
+  project: togglemaster
+  source:
+    repoURL: https://github.com/iDsniel/togglemaster-fase3.git
+    targetRevision: main
+    path: gitops
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: togglemaster
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+      allowEmpty: false
+    syncOptions:
+      - CreateNamespace=true
+      - PruneLast=true
+      - ApplyOutOfSyncOnly=true
+      - RespectIgnoreDifferences=true
+    retry:
+      limit: 5
+      backoff:
+        duration: 5s
+        factor: 2
+        maxDuration: 3m
