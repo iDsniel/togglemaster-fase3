@@ -6,16 +6,16 @@ metadata:
 spec:
   description: ToggleMaster FIAP Phase 3 GitOps project
   sourceRepos:
-    - https://github.com/iDsniel/togglemaster-fase3.git
+  - https://github.com/iDsniel/togglemaster-fase3.git
   destinations:
-    - namespace: togglemaster
-      server: https://kubernetes.default.svc
+  - namespace: togglemaster
+    server: https://kubernetes.default.svc
   clusterResourceWhitelist:
-    - group: ""
-      kind: Namespace
+  - group: ''
+    kind: Namespace
   namespaceResourceWhitelist:
-    - group: "*"
-      kind: "*"
+  - group: '*'
+    kind: '*'
 ---
 apiVersion: argoproj.io/v1alpha1
 kind: Application
@@ -23,10 +23,10 @@ metadata:
   name: togglemaster
   namespace: argocd
   finalizers:
-    - resources-finalizer.argocd.argoproj.io
+  - resources-finalizer.argocd.argoproj.io
   labels:
     app.kubernetes.io/part-of: togglemaster
-    fiap.techchallenge/phase: "3"
+    fiap.techchallenge/phase: '3'
 spec:
   project: togglemaster
   source:
@@ -42,13 +42,20 @@ spec:
       selfHeal: true
       allowEmpty: false
     syncOptions:
-      - CreateNamespace=true
-      - PruneLast=true
-      - ApplyOutOfSyncOnly=true
-      - RespectIgnoreDifferences=true
+    - CreateNamespace=true
+    - PruneLast=true
+    - ApplyOutOfSyncOnly=true
+    - RespectIgnoreDifferences=true
     retry:
       limit: 5
       backoff:
         duration: 5s
         factor: 2
         maxDuration: 3m
+  ignoreDifferences:
+  - group: apps
+    kind: Deployment
+    name: auth-service
+    namespace: togglemaster
+    jsonPointers:
+    - /spec/template/metadata/annotations/togglemaster.io~1recovery-id

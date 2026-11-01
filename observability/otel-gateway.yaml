@@ -1,0 +1,125 @@
+mode: deployment
+fullnameOverride: otel-gateway
+replicaCount: 1
+image:
+  repository: otel/opentelemetry-collector-contrib
+  tag: 0.163.2
+command:
+  name: otelcol-contrib
+resources:
+  requests:
+    cpu: 100m
+    memory: 256Mi
+  limits:
+    cpu: 500m
+    memory: 512Mi
+extraEnvs:
+- name: DD_API_KEY
+  valueFrom:
+    secretKeyRef:
+      name: observability-integrations
+      key: datadog-api-key
+- name: DD_SITE
+  value: datadoghq.com
+ports:
+  metrics:
+    enabled: true
+    containerPort: 8889
+    servicePort: 8889
+    protocol: TCP
+  jaeger-compact:
+    enabled: false
+  jaeger-thrift:
+    enabled: false
+  jaeger-grpc:
+    enabled: false
+  zipkin:
+    enabled: false
+config:
+  receivers:
+    jaeger: null
+    zipkin: null
+    prometheus: null
+    otlp:
+      protocols:
+        grpc:
+          endpoint: 0.0.0.0:4317
+        http:
+          endpoint: 0.0.0.0:4318
+  processors:
+    memory_limiter:
+      check_interval: 1s
+      limit_mib: 400
+      spike_limit_mib: 100
+    batch:
+      timeout: 5s
+      send_batch_size: 512
+    attributes/privacy:
+      actions:
+      - key: http.request.header.authorization
+        action: delete
+      - key: http.request.header.cookie
+        action: delete
+      - key: url.query
+        action: delete
+      - key: http.url
+        action: delete
+      - key: db.statement
+        action: delete
+      - key: db.query.text
+        action: delete
+  connectors:
+    datadog/connector: {}
+  exporters:
+    debug: null
+    prometheus:
+      endpoint: 0.0.0.0:8889
+      resource_to_telemetry_conversion:
+        enabled: true
+    otlphttp/loki:
+      endpoint: http://loki-gateway.observability.svc.cluster.local/otlp
+      retry_on_failure:
+        enabled: true
+      sending_queue:
+        enabled: true
+        queue_size: 1000
+    datadog:
+      api:
+        key: ${env:DD_API_KEY}
+        site: ${env:DD_SITE}
+  service:
+    pipelines:
+      traces:
+        receivers:
+        - otlp
+        processors:
+        - memory_limiter
+        - attributes/privacy
+        - batch
+        exporters:
+        - datadog
+        - datadog/connector
+      metrics:
+        receivers:
+        - otlp
+        processors:
+        - memory_limiter
+        - batch
+        exporters:
+        - prometheus
+      metrics/apm:
+        receivers:
+        - datadog/connector
+        processors:
+        - batch
+        exporters:
+        - datadog
+      logs:
+        receivers:
+        - otlp
+        processors:
+        - memory_limiter
+        - attributes/privacy
+        - batch
+        exporters:
+        - otlphttp/loki

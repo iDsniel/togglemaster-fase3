@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp"
 	"log"
 	"net/http"
 	"os"
@@ -28,6 +29,8 @@ type App struct {
 }
 
 func main() {
+	shutdownTelemetry := setupTelemetry()
+	defer shutdownTelemetry()
 	_ = godotenv.Load() // Carrega .env para dev local
 
 	// --- Configuração ---
@@ -87,7 +90,8 @@ func main() {
 
 	// Cliente HTTP (com timeout)
 	httpClient := &http.Client{
-		Timeout: 5 * time.Second,
+		Timeout:   5 * time.Second,
+		Transport: otelhttp.NewTransport(http.DefaultTransport),
 	}
 
 	// Cria a instância da App
@@ -106,7 +110,7 @@ func main() {
 	mux.HandleFunc("/evaluate", app.evaluationHandler)
 
 	log.Printf("Serviço de Avaliação (Go) rodando na porta %s", port)
-	if err := http.ListenAndServe(":"+port, mux); err != nil {
+	if err := http.ListenAndServe(":"+port, observedHandler(mux, "/health", "/evaluate")); err != nil {
 		log.Fatal(err)
 	}
 }

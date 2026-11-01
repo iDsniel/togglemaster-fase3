@@ -17,6 +17,8 @@ type App struct {
 }
 
 func main() {
+	shutdownTelemetry := setupTelemetry()
+	defer shutdownTelemetry()
 	// Carrega o .env para desenvolvimento local. Em produção, isso não fará nada.
 	_ = godotenv.Load()
 
@@ -60,7 +62,7 @@ func main() {
 	mux.Handle("/admin/keys", app.masterKeyAuthMiddleware(http.HandlerFunc(app.createKeyHandler)))
 
 	log.Printf("Serviço de Autenticação (Go) rodando na porta %s", port)
-	if err := http.ListenAndServe(":"+port, mux); err != nil {
+	if err := http.ListenAndServe(":"+port, observedHandler(mux, "/health", "/validate", "/admin/keys")); err != nil {
 		log.Fatal(err)
 	}
 }

@@ -1,0 +1,144 @@
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: self-healer
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: self-healer
+rules:
+  - apiGroups: [apps]
+    resources: [deployments]
+    resourceNames: [auth-service]
+    verbs: [get, patch]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: self-healer
+subjects:
+  - kind: ServiceAccount
+    name: self-healer
+    namespace: togglemaster
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: self-healer
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: self-healer-state
+spec:
+  accessModes: [ReadWriteOnce]
+  resources:
+    requests:
+      storage: 1Gi
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: self-healer
+spec:
+  replicas: 1
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app: self-healer
+  template:
+    metadata:
+      labels:
+        app: self-healer
+    spec:
+      serviceAccountName: self-healer
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 65532
+        runAsGroup: 65532
+        fsGroup: 65532
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: self-healer
+          image: python:3.12-alpine
+          command: [python, /app/app.py]
+          env:
+            - name: HEALING_ENABLED
+              value: "false"
+            - name: PYTHONDONTWRITEBYTECODE
+              value: "1"
+            - name: HEALER_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: self-healer-auth
+                  key: token
+          ports:
+            - name: http
+              containerPort: 8080
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: http
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: http
+          resources:
+            requests:
+              cpu: 25m
+              memory: 32Mi
+            limits:
+              cpu: 100m
+              memory: 128Mi
+          securityContext:
+            readOnlyRootFilesystem: true
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop: [ALL]
+          volumeMounts:
+            - name: code
+              mountPath: /app
+              readOnly: true
+            - name: state
+              mountPath: /state
+      volumes:
+        - name: code
+          configMap:
+            name: self-healer-code
+        - name: state
+          persistentVolumeClaim:
+            claimName: self-healer-state
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: self-healer
+spec:
+  selector:
+    app: self-healer
+  ports:
+    - port: 8080
+      targetPort: http
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: self-healer-ingress
+spec:
+  podSelector:
+    matchLabels:
+      app: self-healer
+  policyTypes: [Ingress]
+  ingress:
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: observability
+          podSelector:
+            matchLabels:
+              app.kubernetes.io/name: grafana
+      ports:
+        - protocol: TCP
+          port: 8080

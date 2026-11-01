@@ -1,0 +1,177 @@
+grafana:
+  admin:
+    existingSecret: grafana-admin
+    userKey: username
+    passwordKey: password
+  envValueFrom:
+    PAGERDUTY_KEY:
+      secretKeyRef:
+        name: observability-integrations
+        key: pagerduty-routing-key
+    DISCORD_WEBHOOK:
+      secretKeyRef:
+        name: observability-integrations
+        key: discord-webhook
+    HEALER_TOKEN:
+      secretKeyRef:
+        name: observability-integrations
+        key: healer-token
+  service:
+    type: ClusterIP
+  additionalDataSources:
+  - name: Loki
+    type: loki
+    uid: loki
+    url: http://loki-gateway
+    access: proxy
+  dashboardProviders:
+    dashboardproviders.yaml:
+      apiVersion: 1
+      providers:
+      - name: togglemaster
+        orgId: 1
+        folder: ToggleMaster
+        type: file
+        disableDeletion: false
+        options:
+          path: /var/lib/grafana/dashboards/togglemaster
+  dashboards:
+    togglemaster:
+      health:
+        json: '{"uid": "togglemaster-health", "title": "ToggleMaster - Saude e telemetria",
+          "schemaVersion": 39, "version": 1, "refresh": "10s", "time": {"from": "now-30m",
+          "to": "now"}, "panels": [{"id": 1, "title": "CPU por pod", "type": "timeseries",
+          "gridPos": {"x": 0, "y": 0, "w": 12, "h": 8}, "datasource": {"type": "prometheus",
+          "uid": "prometheus"}, "targets": [{"refId": "A", "expr": "sum by (pod) (rate(container_cpu_usage_seconds_total{namespace=\"togglemaster\",container!=\"\"}[5m]))"}]},
+          {"id": 2, "title": "Memoria por pod", "type": "timeseries", "gridPos": {"x":
+          12, "y": 0, "w": 12, "h": 8}, "datasource": {"type": "prometheus", "uid":
+          "prometheus"}, "targets": [{"refId": "A", "expr": "sum by (pod) (container_memory_working_set_bytes{namespace=\"togglemaster\",container!=\"\"})"}]},
+          {"id": 3, "title": "Requisicoes por servico", "type": "timeseries", "gridPos":
+          {"x": 0, "y": 8, "w": 12, "h": 8}, "datasource": {"type": "prometheus",
+          "uid": "prometheus"}, "targets": [{"refId": "A", "expr": "sum by (service)
+          (rate(togglemaster_http_requests_total{route!=\"/health\"}[5m]))"}]}, {"id":
+          4, "title": "Erros 5xx por servico", "type": "timeseries", "gridPos": {"x":
+          12, "y": 8, "w": 12, "h": 8}, "datasource": {"type": "prometheus", "uid":
+          "prometheus"}, "targets": [{"refId": "A", "expr": "sum by (service) (rate(togglemaster_http_requests_total{status=~\"5..\"}[5m]))"}]},
+          {"id": 5, "title": "Logs do ecossistema", "type": "logs", "gridPos": {"x":
+          0, "y": 16, "w": 12, "h": 8}, "datasource": {"type": "loki", "uid": "loki"},
+          "targets": [{"refId": "A", "expr": "{service_name=~\".*-service\"}"}]},
+          {"id": 6, "title": "Logs de todos os containers", "type": "logs", "gridPos":
+          {"x": 12, "y": 16, "w": 12, "h": 8}, "datasource": {"type": "loki", "uid":
+          "loki"}, "targets": [{"refId": "A", "expr": "{k8s_namespace_name=~\".+\"}"}]}]}'
+  alerting:
+    rules.yaml:
+      apiVersion: 1
+      groups:
+      - orgId: 1
+        name: togglemaster
+        folder: ToggleMaster
+        interval: 1m
+        rules:
+        - uid: togglemaster-auth-errors
+          title: ToggleMasterAuthHighErrorRate
+          condition: C
+          for: 2m
+          noDataState: NoData
+          execErrState: Error
+          labels:
+            project: togglemaster
+            service: auth-service
+            severity: critical
+            self_heal: restart-auth
+          annotations:
+            summary: 'Auth: mais de 5% de erros 5xx por 5 minutos, pelo menos 20 requisicoes'
+            runbook_url: https://github.com/iDsniel/togglemaster-fase3/blob/feat/fase4-observability/docs/phase4-runbook.md
+          data:
+          - refId: A
+            relativeTimeRange:
+              from: 600
+              to: 0
+            datasourceUid: prometheus
+            model:
+              expr: ((sum(rate(togglemaster_http_requests_total{service="auth-service",status=~"5..",route!="/health"}[5m]))
+                or vector(0)) / clamp_min(sum(rate(togglemaster_http_requests_total{service="auth-service",route!="/health"}[5m])),
+                0.001) > bool 0.05) * (sum(increase(togglemaster_http_requests_total{service="auth-service",route!="/health"}[5m]))
+                >= bool 20)
+              instant: true
+              refId: A
+          - refId: C
+            relativeTimeRange:
+              from: 0
+              to: 0
+            datasourceUid: __expr__
+            model:
+              type: threshold
+              refId: C
+              expression: A
+              conditions:
+              - evaluator:
+                  type: gt
+                  params:
+                  - 0
+                operator:
+                  type: and
+                reducer:
+                  type: last
+                type: query
+                query:
+                  params:
+                  - C
+    contactpoints.yaml:
+      apiVersion: 1
+      contactPoints:
+      - orgId: 1
+        name: togglemaster-incident
+        receivers:
+        - uid: tm-pd
+          type: pagerduty
+          settings:
+            integrationKey: $PAGERDUTY_KEY
+            severity: critical
+        - uid: tm-discord
+          type: discord
+          settings:
+            url: $DISCORD_WEBHOOK
+        - uid: tm-healer
+          type: webhook
+          settings:
+            url: http://self-healer.togglemaster.svc.cluster.local:8080/alert
+            httpMethod: POST
+            authorization_scheme: Bearer
+            authorization_credentials: $HEALER_TOKEN
+    policies.yaml:
+      apiVersion: 1
+      policies:
+      - orgId: 1
+        receiver: togglemaster-incident
+        group_by:
+        - alertname
+        - service
+        group_wait: 30s
+        group_interval: 5m
+        repeat_interval: 4h
+prometheus:
+  prometheusSpec:
+    retention: 3d
+    resources:
+      requests:
+        cpu: 200m
+        memory: 512Mi
+      limits:
+        cpu: 1000m
+        memory: 1536Mi
+    storageSpec:
+      volumeClaimTemplate:
+        spec:
+          accessModes:
+          - ReadWriteOnce
+          resources:
+            requests:
+              storage: 10Gi
+    additionalScrapeConfigs:
+    - job_name: otel-applications
+      static_configs:
+      - targets:
+        - otel-gateway:8889
+alertmanager:
+  enabled: false

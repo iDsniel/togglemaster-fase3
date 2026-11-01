@@ -18,50 +18,59 @@ spec:
         app.kubernetes.io/part-of: togglemaster
     spec:
       containers:
-        - name: auth-service
-          image: auth-image
-          imagePullPolicy: IfNotPresent
-          ports:
-            - containerPort: 8001
-          env:
-            - name: PORT
-              value: "8001"
-            - name: DATABASE_URL
-              valueFrom:
-                secretKeyRef:
-                  name: togglemaster-runtime-secrets
-                  key: auth_database_url
-            - name: MASTER_KEY
-              valueFrom:
-                secretKeyRef:
-                  name: togglemaster-runtime-secrets
-                  key: master_key
-          readinessProbe:
-            httpGet:
-              path: /health
-              port: 8001
-            initialDelaySeconds: 5
-            periodSeconds: 10
-          livenessProbe:
-            httpGet:
-              path: /health
-              port: 8001
-            initialDelaySeconds: 15
-            periodSeconds: 20
-          resources:
-            requests:
-              cpu: 50m
-              memory: 64Mi
-            limits:
-              cpu: 250m
-              memory: 256Mi
-          securityContext:
-            allowPrivilegeEscalation: false
-            capabilities:
-              drop: ["ALL"]
-            runAsNonRoot: true
-            seccompProfile:
-              type: RuntimeDefault
+      - name: auth-service
+        image: auth-image
+        imagePullPolicy: IfNotPresent
+        ports:
+        - containerPort: 8001
+        env:
+        - name: PORT
+          value: '8001'
+        - name: DATABASE_URL
+          valueFrom:
+            secretKeyRef:
+              name: togglemaster-runtime-secrets
+              key: auth_database_url
+        - name: MASTER_KEY
+          valueFrom:
+            secretKeyRef:
+              name: togglemaster-runtime-secrets
+              key: master_key
+        - name: OTEL_SERVICE_NAME
+          value: auth-service
+        - name: OTEL_EXPORTER_OTLP_ENDPOINT
+          value: http://otel-gateway.observability.svc.cluster.local:4318
+        - name: OTEL_EXPORTER_OTLP_PROTOCOL
+          value: http/protobuf
+        - name: OTEL_RESOURCE_ATTRIBUTES
+          value: service.namespace=togglemaster,deployment.environment.name=dev
+        readinessProbe:
+          httpGet:
+            path: /health
+            port: 8001
+          initialDelaySeconds: 5
+          periodSeconds: 10
+        livenessProbe:
+          httpGet:
+            path: /health
+            port: 8001
+          initialDelaySeconds: 15
+          periodSeconds: 20
+        resources:
+          requests:
+            cpu: 50m
+            memory: 64Mi
+          limits:
+            cpu: 250m
+            memory: 256Mi
+        securityContext:
+          allowPrivilegeEscalation: false
+          capabilities:
+            drop:
+            - ALL
+          runAsNonRoot: true
+          seccompProfile:
+            type: RuntimeDefault
 ---
 apiVersion: v1
 kind: Service
@@ -72,8 +81,8 @@ spec:
   selector:
     app: auth-service
   ports:
-    - port: 8001
-      targetPort: 8001
+  - port: 8001
+    targetPort: 8001
   type: ClusterIP
 ---
 apiVersion: apps/v1
@@ -96,50 +105,59 @@ spec:
         app.kubernetes.io/part-of: togglemaster
     spec:
       containers:
-        - name: flag-service
-          image: flag-image
-          imagePullPolicy: IfNotPresent
-          ports:
-            - containerPort: 8002
-          env:
-            - name: PORT
-              value: "8002"
-            - name: DATABASE_URL
-              valueFrom:
-                secretKeyRef:
-                  name: togglemaster-runtime-secrets
-                  key: flag_database_url
-            - name: AUTH_SERVICE_URL
-              valueFrom:
-                configMapKeyRef:
-                  name: togglemaster-config
-                  key: AUTH_SERVICE_URL
-          readinessProbe:
-            httpGet:
-              path: /health
-              port: 8002
-            initialDelaySeconds: 5
-            periodSeconds: 10
-          livenessProbe:
-            httpGet:
-              path: /health
-              port: 8002
-            initialDelaySeconds: 15
-            periodSeconds: 20
-          resources:
-            requests:
-              cpu: 50m
-              memory: 64Mi
-            limits:
-              cpu: 250m
-              memory: 256Mi
-          securityContext:
-            allowPrivilegeEscalation: false
-            capabilities:
-              drop: ["ALL"]
-            runAsNonRoot: true
-            seccompProfile:
-              type: RuntimeDefault
+      - name: flag-service
+        image: flag-image
+        imagePullPolicy: IfNotPresent
+        ports:
+        - containerPort: 8002
+        env:
+        - name: PORT
+          value: '8002'
+        - name: DATABASE_URL
+          valueFrom:
+            secretKeyRef:
+              name: togglemaster-runtime-secrets
+              key: flag_database_url
+        - name: AUTH_SERVICE_URL
+          valueFrom:
+            configMapKeyRef:
+              name: togglemaster-config
+              key: AUTH_SERVICE_URL
+        - name: OTEL_SERVICE_NAME
+          value: flag-service
+        - name: OTEL_EXPORTER_OTLP_ENDPOINT
+          value: http://otel-gateway.observability.svc.cluster.local:4318
+        - name: OTEL_EXPORTER_OTLP_PROTOCOL
+          value: http/protobuf
+        - name: OTEL_RESOURCE_ATTRIBUTES
+          value: service.namespace=togglemaster,deployment.environment.name=dev
+        readinessProbe:
+          httpGet:
+            path: /health
+            port: 8002
+          initialDelaySeconds: 5
+          periodSeconds: 10
+        livenessProbe:
+          httpGet:
+            path: /health
+            port: 8002
+          initialDelaySeconds: 15
+          periodSeconds: 20
+        resources:
+          requests:
+            cpu: 50m
+            memory: 64Mi
+          limits:
+            cpu: 250m
+            memory: 256Mi
+        securityContext:
+          allowPrivilegeEscalation: false
+          capabilities:
+            drop:
+            - ALL
+          runAsNonRoot: true
+          seccompProfile:
+            type: RuntimeDefault
 ---
 apiVersion: v1
 kind: Service
@@ -150,8 +168,8 @@ spec:
   selector:
     app: flag-service
   ports:
-    - port: 8002
-      targetPort: 8002
+  - port: 8002
+    targetPort: 8002
   type: ClusterIP
 ---
 apiVersion: apps/v1
@@ -174,50 +192,59 @@ spec:
         app.kubernetes.io/part-of: togglemaster
     spec:
       containers:
-        - name: targeting-service
-          image: targeting-image
-          imagePullPolicy: IfNotPresent
-          ports:
-            - containerPort: 8003
-          env:
-            - name: PORT
-              value: "8003"
-            - name: DATABASE_URL
-              valueFrom:
-                secretKeyRef:
-                  name: togglemaster-runtime-secrets
-                  key: targeting_database_url
-            - name: AUTH_SERVICE_URL
-              valueFrom:
-                configMapKeyRef:
-                  name: togglemaster-config
-                  key: AUTH_SERVICE_URL
-          readinessProbe:
-            httpGet:
-              path: /health
-              port: 8003
-            initialDelaySeconds: 5
-            periodSeconds: 10
-          livenessProbe:
-            httpGet:
-              path: /health
-              port: 8003
-            initialDelaySeconds: 15
-            periodSeconds: 20
-          resources:
-            requests:
-              cpu: 50m
-              memory: 64Mi
-            limits:
-              cpu: 250m
-              memory: 256Mi
-          securityContext:
-            allowPrivilegeEscalation: false
-            capabilities:
-              drop: ["ALL"]
-            runAsNonRoot: true
-            seccompProfile:
-              type: RuntimeDefault
+      - name: targeting-service
+        image: targeting-image
+        imagePullPolicy: IfNotPresent
+        ports:
+        - containerPort: 8003
+        env:
+        - name: PORT
+          value: '8003'
+        - name: DATABASE_URL
+          valueFrom:
+            secretKeyRef:
+              name: togglemaster-runtime-secrets
+              key: targeting_database_url
+        - name: AUTH_SERVICE_URL
+          valueFrom:
+            configMapKeyRef:
+              name: togglemaster-config
+              key: AUTH_SERVICE_URL
+        - name: OTEL_SERVICE_NAME
+          value: targeting-service
+        - name: OTEL_EXPORTER_OTLP_ENDPOINT
+          value: http://otel-gateway.observability.svc.cluster.local:4318
+        - name: OTEL_EXPORTER_OTLP_PROTOCOL
+          value: http/protobuf
+        - name: OTEL_RESOURCE_ATTRIBUTES
+          value: service.namespace=togglemaster,deployment.environment.name=dev
+        readinessProbe:
+          httpGet:
+            path: /health
+            port: 8003
+          initialDelaySeconds: 5
+          periodSeconds: 10
+        livenessProbe:
+          httpGet:
+            path: /health
+            port: 8003
+          initialDelaySeconds: 15
+          periodSeconds: 20
+        resources:
+          requests:
+            cpu: 50m
+            memory: 64Mi
+          limits:
+            cpu: 250m
+            memory: 256Mi
+        securityContext:
+          allowPrivilegeEscalation: false
+          capabilities:
+            drop:
+            - ALL
+          runAsNonRoot: true
+          seccompProfile:
+            type: RuntimeDefault
 ---
 apiVersion: v1
 kind: Service
@@ -228,8 +255,8 @@ spec:
   selector:
     app: targeting-service
   ports:
-    - port: 8003
-      targetPort: 8003
+  - port: 8003
+    targetPort: 8003
   type: ClusterIP
 ---
 apiVersion: apps/v1
@@ -253,65 +280,79 @@ spec:
     spec:
       serviceAccountName: evaluation-service
       containers:
-        - name: evaluation-service
-          image: evaluation-image
-          imagePullPolicy: IfNotPresent
-          ports:
-            - containerPort: 8004
-          env:
-            - name: PORT
-              value: "8004"
-            - name: REDIS_URL
-              valueFrom:
-                configMapKeyRef:
-                  name: togglemaster-config
-                  key: REDIS_URL
-            - name: FLAG_SERVICE_URL
-              valueFrom:
-                configMapKeyRef:
-                  name: togglemaster-config
-                  key: FLAG_SERVICE_URL
-            - name: TARGETING_SERVICE_URL
-              valueFrom:
-                configMapKeyRef:
-                  name: togglemaster-config
-                  key: TARGETING_SERVICE_URL
-            - name: AWS_REGION
-              valueFrom:
-                configMapKeyRef:
-                  name: togglemaster-config
-                  key: AWS_REGION
-            - name: AWS_SQS_URL
-              valueFrom:
-                configMapKeyRef:
-                  name: togglemaster-config
-                  key: AWS_SQS_URL
-          readinessProbe:
-            httpGet:
-              path: /health
-              port: 8004
-            initialDelaySeconds: 5
-            periodSeconds: 10
-          livenessProbe:
-            httpGet:
-              path: /health
-              port: 8004
-            initialDelaySeconds: 15
-            periodSeconds: 20
-          resources:
-            requests:
-              cpu: 50m
-              memory: 64Mi
-            limits:
-              cpu: 250m
-              memory: 256Mi
-          securityContext:
-            allowPrivilegeEscalation: false
-            capabilities:
-              drop: ["ALL"]
-            runAsNonRoot: true
-            seccompProfile:
-              type: RuntimeDefault
+      - name: evaluation-service
+        image: evaluation-image
+        imagePullPolicy: IfNotPresent
+        ports:
+        - containerPort: 8004
+        env:
+        - name: PORT
+          value: '8004'
+        - name: REDIS_URL
+          valueFrom:
+            configMapKeyRef:
+              name: togglemaster-config
+              key: REDIS_URL
+        - name: FLAG_SERVICE_URL
+          valueFrom:
+            configMapKeyRef:
+              name: togglemaster-config
+              key: FLAG_SERVICE_URL
+        - name: TARGETING_SERVICE_URL
+          valueFrom:
+            configMapKeyRef:
+              name: togglemaster-config
+              key: TARGETING_SERVICE_URL
+        - name: AWS_REGION
+          valueFrom:
+            configMapKeyRef:
+              name: togglemaster-config
+              key: AWS_REGION
+        - name: AWS_SQS_URL
+          valueFrom:
+            configMapKeyRef:
+              name: togglemaster-config
+              key: AWS_SQS_URL
+        - name: OTEL_SERVICE_NAME
+          value: evaluation-service
+        - name: OTEL_EXPORTER_OTLP_ENDPOINT
+          value: http://otel-gateway.observability.svc.cluster.local:4318
+        - name: OTEL_EXPORTER_OTLP_PROTOCOL
+          value: http/protobuf
+        - name: OTEL_RESOURCE_ATTRIBUTES
+          value: service.namespace=togglemaster,deployment.environment.name=dev
+        - name: SERVICE_API_KEY
+          valueFrom:
+            secretKeyRef:
+              name: togglemaster-service-api-key
+              key: api-key
+        readinessProbe:
+          httpGet:
+            path: /health
+            port: 8004
+          initialDelaySeconds: 5
+          periodSeconds: 10
+        livenessProbe:
+          httpGet:
+            path: /health
+            port: 8004
+          initialDelaySeconds: 15
+          periodSeconds: 20
+        resources:
+          requests:
+            cpu: 50m
+            memory: 64Mi
+          limits:
+            cpu: 250m
+            memory: 256Mi
+        securityContext:
+          allowPrivilegeEscalation: false
+          capabilities:
+            drop:
+            - ALL
+          runAsNonRoot: true
+          seccompProfile:
+            type: RuntimeDefault
 ---
 apiVersion: v1
 kind: Service
@@ -322,8 +363,8 @@ spec:
   selector:
     app: evaluation-service
   ports:
-    - port: 8004
-      targetPort: 8004
+  - port: 8004
+    targetPort: 8004
   type: ClusterIP
 ---
 apiVersion: apps/v1
@@ -347,55 +388,64 @@ spec:
     spec:
       serviceAccountName: analytics-service
       containers:
-        - name: analytics-service
-          image: analytics-image
-          imagePullPolicy: IfNotPresent
-          ports:
-            - containerPort: 8005
-          env:
-            - name: PORT
-              value: "8005"
-            - name: AWS_REGION
-              valueFrom:
-                configMapKeyRef:
-                  name: togglemaster-config
-                  key: AWS_REGION
-            - name: AWS_SQS_URL
-              valueFrom:
-                configMapKeyRef:
-                  name: togglemaster-config
-                  key: AWS_SQS_URL
-            - name: AWS_DYNAMODB_TABLE
-              valueFrom:
-                configMapKeyRef:
-                  name: togglemaster-config
-                  key: AWS_DYNAMODB_TABLE
-          readinessProbe:
-            httpGet:
-              path: /health
-              port: 8005
-            initialDelaySeconds: 5
-            periodSeconds: 10
-          livenessProbe:
-            httpGet:
-              path: /health
-              port: 8005
-            initialDelaySeconds: 15
-            periodSeconds: 20
-          resources:
-            requests:
-              cpu: 50m
-              memory: 64Mi
-            limits:
-              cpu: 250m
-              memory: 256Mi
-          securityContext:
-            allowPrivilegeEscalation: false
-            capabilities:
-              drop: ["ALL"]
-            runAsNonRoot: true
-            seccompProfile:
-              type: RuntimeDefault
+      - name: analytics-service
+        image: analytics-image
+        imagePullPolicy: IfNotPresent
+        ports:
+        - containerPort: 8005
+        env:
+        - name: PORT
+          value: '8005'
+        - name: AWS_REGION
+          valueFrom:
+            configMapKeyRef:
+              name: togglemaster-config
+              key: AWS_REGION
+        - name: AWS_SQS_URL
+          valueFrom:
+            configMapKeyRef:
+              name: togglemaster-config
+              key: AWS_SQS_URL
+        - name: AWS_DYNAMODB_TABLE
+          valueFrom:
+            configMapKeyRef:
+              name: togglemaster-config
+              key: AWS_DYNAMODB_TABLE
+        - name: OTEL_SERVICE_NAME
+          value: analytics-service
+        - name: OTEL_EXPORTER_OTLP_ENDPOINT
+          value: http://otel-gateway.observability.svc.cluster.local:4318
+        - name: OTEL_EXPORTER_OTLP_PROTOCOL
+          value: http/protobuf
+        - name: OTEL_RESOURCE_ATTRIBUTES
+          value: service.namespace=togglemaster,deployment.environment.name=dev
+        readinessProbe:
+          httpGet:
+            path: /health
+            port: 8005
+          initialDelaySeconds: 5
+          periodSeconds: 10
+        livenessProbe:
+          httpGet:
+            path: /health
+            port: 8005
+          initialDelaySeconds: 15
+          periodSeconds: 20
+        resources:
+          requests:
+            cpu: 50m
+            memory: 64Mi
+          limits:
+            cpu: 250m
+            memory: 256Mi
+        securityContext:
+          allowPrivilegeEscalation: false
+          capabilities:
+            drop:
+            - ALL
+          runAsNonRoot: true
+          seccompProfile:
+            type: RuntimeDefault
 ---
 apiVersion: v1
 kind: Service
@@ -406,6 +456,6 @@ spec:
   selector:
     app: analytics-service
   ports:
-    - port: 8005
-      targetPort: 8005
+  - port: 8005
+    targetPort: 8005
   type: ClusterIP

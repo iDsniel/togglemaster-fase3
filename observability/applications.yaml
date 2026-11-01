@@ -1,0 +1,118 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: monitoring
+  namespace: argocd
+spec:
+  project: default
+  sources:
+  - repoURL: https://prometheus-community.github.io/helm-charts
+    chart: kube-prometheus-stack
+    targetRevision: 92.17.0
+    helm:
+      releaseName: monitoring
+      valueFiles:
+      - $values/observability/monitoring.yaml
+  - repoURL: https://github.com/iDsniel/togglemaster-fase3.git
+    targetRevision: feat/fase4-observability
+    ref: values
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: observability
+  syncPolicy:
+    syncOptions:
+    - CreateNamespace=true
+    - ServerSideApply=true
+---
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: loki
+  namespace: argocd
+spec:
+  project: default
+  sources:
+  - repoURL: https://grafana.github.io/helm-charts
+    chart: loki
+    targetRevision: 7.5.0
+    helm:
+      releaseName: loki
+      valueFiles:
+      - $values/observability/loki.yaml
+  - repoURL: https://github.com/iDsniel/togglemaster-fase3.git
+    targetRevision: feat/fase4-observability
+    ref: values
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: observability
+  syncPolicy:
+    syncOptions:
+    - CreateNamespace=true
+    - ServerSideApply=true
+---
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: otel-gateway
+  namespace: argocd
+spec:
+  project: default
+  sources:
+  - repoURL: https://open-telemetry.github.io/opentelemetry-helm-charts
+    chart: opentelemetry-collector
+    targetRevision: 0.178.1
+    helm:
+      releaseName: otel-gateway
+      valueFiles:
+      - $values/observability/otel-gateway.yaml
+  - repoURL: https://github.com/iDsniel/togglemaster-fase3.git
+    targetRevision: feat/fase4-observability
+    ref: values
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: observability
+  syncPolicy:
+    syncOptions:
+    - CreateNamespace=true
+    - ServerSideApply=true
+---
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: otel-logs
+  namespace: argocd
+spec:
+  project: default
+  sources:
+  - repoURL: https://open-telemetry.github.io/opentelemetry-helm-charts
+    chart: opentelemetry-collector
+    targetRevision: 0.178.1
+    helm:
+      releaseName: otel-logs
+      valueFiles:
+      - $values/observability/otel-logs.yaml
+  - repoURL: https://github.com/iDsniel/togglemaster-fase3.git
+    targetRevision: feat/fase4-observability
+    ref: values
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: observability
+  syncPolicy:
+    syncOptions:
+    - CreateNamespace=true
+    - ServerSideApply=true
+---
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: self-healer
+  namespace: argocd
+spec:
+  project: togglemaster
+  source:
+    repoURL: https://github.com/iDsniel/togglemaster-fase3.git
+    targetRevision: feat/fase4-observability
+    path: self-healing
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: togglemaster
