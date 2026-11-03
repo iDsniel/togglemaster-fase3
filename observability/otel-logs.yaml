@@ -1,0 +1,62 @@
+mode: daemonset
+fullnameOverride: otel-logs
+image:
+  repository: otel/opentelemetry-collector-contrib
+  tag: 0.163.2
+command:
+  name: otelcol-contrib
+presets:
+  logsCollection:
+    enabled: true
+    includeCollectorLogs: false
+  kubernetesAttributes:
+    enabled: true
+resources:
+  requests:
+    cpu: 50m
+    memory: 128Mi
+  limits:
+    cpu: 200m
+    memory: 256Mi
+config:
+  receivers:
+    jaeger: null
+    zipkin: null
+    prometheus: null
+    otlp: null
+  processors:
+    batch: {}
+    memory_limiter:
+      check_interval: 1s
+      limit_mib: 200
+      spike_limit_mib: 40
+  exporters:
+    debug: null
+    otlphttp:
+      endpoint: http://otel-gateway.observability.svc.cluster.local:4318
+  service:
+    pipelines:
+      traces: null
+      metrics: null
+      logs:
+        receivers:
+        - filelog
+        processors:
+        - memory_limiter
+        - k8sattributes
+        - batch
+        exporters:
+        - otlphttp
+ports:
+  otlp:
+    enabled: false
+  otlp-http:
+    enabled: false
+  jaeger-compact:
+    enabled: false
+  jaeger-thrift:
+    enabled: false
+  jaeger-grpc:
+    enabled: false
+  zipkin:
+    enabled: false

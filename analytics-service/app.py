@@ -5,6 +5,8 @@ import json
 import uuid
 import time
 import logging
+from opentelemetry import trace, propagate
+from opentelemetry.trace import SpanKind
 import boto3
 from botocore.exceptions import NoCredentialsError, ClientError
 from flask import Flask, jsonify
@@ -44,6 +46,11 @@ except Exception as e:
 # --- SQS Worker ---
 
 def process_message(message):
+    carrier = {k: v.get("StringValue", "") for k, v in message.get("MessageAttributes", {}).items()}
+    with trace.get_tracer("togglemaster").start_as_current_span("togglemaster-events process", context=propagate.extract(carrier), kind=SpanKind.CONSUMER):
+        _process_message(message)
+
+def _process_message(message):
     """ Processa uma única mensagem SQS e a insere no DynamoDB """
     try:
         log.info(f"Processando mensagem ID: {message['MessageId']}")
@@ -93,6 +100,7 @@ def sqs_worker_loop():
             # Long-polling: espera até 20s por mensagens
             response = sqs_client.receive_message(
                 QueueUrl=SQS_QUEUE_URL,
+                MessageAttributeNames=["traceparent", "tracestate"],
                 MaxNumberOfMessages=10,  # Processa em lotes de até 10
                 WaitTimeSeconds=20
             )
@@ -117,6 +125,8 @@ def sqs_worker_loop():
 # --- Servidor Flask (Apenas para Health Check) ---
 
 app = Flask(__name__)
+from telemetry import setup
+setup(app)
 
 @app.route('/health')
 def health():
