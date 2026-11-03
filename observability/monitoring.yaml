@@ -150,6 +150,10 @@ grafana:
         group_wait: 30s
         group_interval: 5m
         repeat_interval: 4h
+prometheusOperator:
+  admissionWebhooks:
+    patch:
+      ttlSecondsAfterFinished: 600
 prometheus:
   prometheusSpec:
     retention: 3d
